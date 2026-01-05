@@ -84,8 +84,8 @@ app.get("/user/:id", (req, res) => {
 ====================== */
 
 app.post("/add-coins", (req, res) => {
-  const { user_id,username, amount } = req.body;
-  if (!user_id, username) return res.json({ ok: false });
+  const { user_id, amount } = req.body;
+  if (!user_id) return res.json({ ok: false });
 
   const user = getUser(user_id);
   user.coins += Number(amount) || 0;
@@ -99,13 +99,10 @@ app.post("/add-coins", (req, res) => {
 ====================== */
 
 app.post("/buy", (req, res) => {
-  const { user_id,username, item, price } = req.body;
+  const { user_id, item, price } = req.body;
   if (!user_id || !item || !price) return res.json({ ok: false });
 
   const user = getUser(user_id);
-  const userline = username
-    ? `👤Пользователь: @${username}`
-    : `👤user id: <code>${user_id}</code>`;
 
   if (user.coins < price) {
     return res.json({ ok: false, error: "NOT_ENOUGH_COINS" });
@@ -116,7 +113,7 @@ app.post("/buy", (req, res) => {
 
   sendTelegram(
     `🛒 <b>ПОКУПКА</b>\n` +
-    `${userline}\n` +
+    `👤 User ID: <code>${user_id}</code>\n` +
     `📦 Товар: <b>${item}</b>\n` +
     `💰 Цена: ${price}`
   );
