@@ -100,12 +100,12 @@ fetch(`${SERVER_URL}/user/${USER_ID}`)
 // SHOP
 // =====================
 const shopItems = [
-  { title: "5 секунд\nв видео", price: 100 },
-  { title: "Участие\nв видео", price: 300 },
-  { title: "Управляю\nмной", price: 500 },
-  { title: "Челлендж", price: 700 },
-  { title: "Выбор\nнаказания", price: 1000 },
-  { title: "VIP\nучастие", price: 1500 }
+  { title: "Картинка\nв видео", price: 100 },
+  { title: "5 секунд\nв видео", price: 500 },
+  { title: "Управляй\nмной", price: 1000 },
+  { title: "Челлендж", price: 2500 },
+  { title: "Участие\nв видео", price: 5000 },
+  { title: "Ваша идея\nвидео", price: 1000 }
 ];
 
 // =====================
@@ -248,7 +248,7 @@ function update() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: USER_ID, username: USERNAME, amount: 1 })
-      });
+      }).catch(() => {});
     }
   });
 
