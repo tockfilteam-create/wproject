@@ -12,8 +12,8 @@ app.use(express.json());
    TELEGRAM BOT
 ====================== */
 
-const BOT_TOKEN = "8405263942:AAGBBYHvXtLEddP4GrfNKdNrjqrFWAQt53Y";
-const ADMIN_CHAT_ID = "921427881";
+const BOT_TOKEN = "ТУТ_ТВОЙ_BOT_TOKEN";
+const ADMIN_CHAT_ID = "ТУТ_ТВОЙ_CHAT_ID";
 
 function sendTelegram(text) {
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -76,7 +76,7 @@ app.post("/score", (req, res) => {
     saveUsers();
 
     sendTelegram(
-      🎮 <b>NEW SCORE</b>\n👤 ${userId}\n🔥 ${score}
+      `🎮 <b>NEW SCORE</b>\n👤 ${userId}\n🔥 ${score}`
     );
   }
 
