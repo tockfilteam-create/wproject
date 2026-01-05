@@ -310,8 +310,8 @@ function draw() {
 
   ctx.fillText(`Счёт: ${score}`, 20, 60);
   ctx.fillText(`Лучший: ${bestScore}`, 20, 80);
-  ctx.drawImage(coinImg, 45, 90, 18, 18);
-  ctx.fillText(coins, 45, 90);
+  ctx.drawImage(coinImg, 20, 90, 18, 18);
+  ctx.fillText(coins, 20, 90);
 
   if (gameState === STATE_START) {
     darkOverlay();
