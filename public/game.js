@@ -306,7 +306,7 @@ function draw() {
   ctx.fillText("||", canvas.width - 40, 30);
 
   ctx.fillText(`Счёт: ${score}`, 20, 60);
-  ctx.fillText(`Лучший: ${bestScorescore}`, 20, 80);
+  ctx.fillText(`Лучший: ${bestScore}`, 20, 80);
   ctx.drawImage(coinImg, 20, 70, 18, 18);
   ctx.fillText(coins, 45, 85);
 
