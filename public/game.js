@@ -170,7 +170,7 @@ function handleInput(e) {
 });
 
 buyMessage = `Ты купил:\n${item.title}`;
-buyMessageTimer = 120
+buyMessageTimer = 120;
         }
       }
     });
@@ -332,6 +332,7 @@ function draw() {
     ctx.font = "30px Arial";
     ctx.fillText("ТЫ ПРОИГРАЛ", canvas.width / 2 - 100, canvas.height / 2);
   }
+
   if (score > bestScore) {
     bestScore = score;
   }
@@ -358,8 +359,8 @@ function draw() {
 
     if (buyMessageTimer > 0 ) {
       darkOverlay();
-      ctx.fillStyle = "#fff"
-      ctx.font = "24px Arial"
+      ctx.fillStyle = "#fff";
+      ctx.font = "24px Arial";
       drawMultiline(buyMessage, canvas.width / 2 - 100, canvas.height / 2);
       buyMessageTimer--;
     }
