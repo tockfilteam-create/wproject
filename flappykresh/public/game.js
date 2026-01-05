@@ -5,22 +5,8 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-const USER_ID = tg.initDataUnsafe?.user?.id;
-if (!USER_ID) {
-  alert("Ошибка Telegram user_id");
-}
-
-// =====================
-// SERVER
-// =====================
-const SERVER_URL = "https://wproject.onrender.com";
-
-// регистрация юзера
-fetch(`${SERVER_URL}/init`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ user_id: USER_ID })
-});
+const userId = tg.initDataUnsafe?.user?.id || null;
+const API_URL = "https://wproject.onrender.com"; // ← ЗАМЕНИ
 
 // =====================
 // CANVAS
@@ -28,8 +14,12 @@ fetch(`${SERVER_URL}/init`, {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 360;
-canvas.height = 640;
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener("resize", resizeCanvas);
 
 // =====================
 // IMAGES
@@ -87,24 +77,47 @@ let coins = 0;
 // SHOP
 // =====================
 const shopItems = [
-  { title: "5 секунд в видео", price: 100 },
-  { title: "Участие в видео", price: 300 },
-  { title: "Управляю мной", price: 500 },
-  { title: "Челлендж", price: 700 },
-  { title: "Выбор наказания", price: 1000 },
-  { title: "VIP участие", price: 1500 }
+  { title: "Картинка в видео", price: 100 },
+  { title: "5 секунд в видео", price: 300 },
+  { title: "Любой челлендж", price: 500 },
+  { title: "Управляй мной", price: 700 },
+  { title: "Участие в видео", price: 1000 },
+  { title: "Ваша идея видео", price: 5000 }
 ];
 
 // =====================
-// INPUT
+// SERVER
 // =====================
-canvas.addEventListener("click", handleInput);
-canvas.addEventListener("touchstart", handleInput);
+async function loadCoins() {
+  if (!userId) return;
+  const res = await fetch(`${API_URL}/coins/${userId}`);
+  const data = await res.json();
+  coins = data.coins || 0;
+}
+
+async function saveCoins() {
+  if (!userId) return;
+  fetch(`${API_URL}/coins`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, coins })
+  });
+}
+
+loadCoins();
+
+// =====================
+// INPUT (NO DOUBLE TAP)
+// =====================
+canvas.addEventListener("touchstart", handleInput, { passive: false });
 
 function handleInput(e) {
+  e.preventDefault();
+
   const rect = canvas.getBoundingClientRect();
-  const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-  const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+  const touch = e.touches[0];
+  const x = touch.clientX - rect.left;
+  const y = touch.clientY - rect.top;
 
   // SHOP BUTTON
   if (x < 100 && y < 50 && gameState !== STATE_SHOP) {
@@ -114,7 +127,11 @@ function handleInput(e) {
   }
 
   // PAUSE
-  if (gameState === STATE_PLAY && x > canvas.width - 50 && y < 50) {
+  if (
+    gameState === STATE_PLAY &&
+    x > canvas.width - 60 &&
+    y < 50
+  ) {
     gameState = STATE_PAUSE;
     return;
   }
@@ -124,8 +141,9 @@ function handleInput(e) {
     return;
   }
 
+  // SHOP
   if (gameState === STATE_SHOP) {
-    if (x < 80 && y < 50) {
+    if (x < 100 && y < 50) {
       gameState = prevState;
       return;
     }
@@ -137,16 +155,14 @@ function handleInput(e) {
       if (x > cx && x < cx + 140 && y > cy && y < cy + 90) {
         if (coins >= item.price) {
           coins -= item.price;
+          saveCoins();
 
-          fetch(`${SERVER_URL}/buy`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              user_id: USER_ID,
-              item: item.title,
-              price: item.price
-            })
-          });
+          tg.sendData(JSON.stringify({
+            type: "purchase",
+            userId,
+            item: item.title,
+            price: item.price
+          }));
 
           alert("Покупка отправлена");
         } else {
@@ -173,33 +189,27 @@ function handleInput(e) {
 }
 
 // =====================
-// GAME
+// GAME LOGIC
 // =====================
 function restartGame() {
-  bird.y = 200;
+  bird.y = canvas.height / 2;
   bird.velocity = 0;
   pipes = [];
   score = 0;
-  gameState = STATE_PLAY;
+
+gameState = STATE_PLAY;
 }
 
-// =====================
-// PIPES
-// =====================
 function createPipe() {
   const topHeight = Math.random() * 200 + 50;
   pipes.push({
     x: canvas.width,
     top: topHeight,
     bottom: canvas.height - topHeight - pipeGap,
-
-passed: false
+    passed: false
   });
 }
 
-// =====================
-// UPDATE
-// =====================
 function update() {
   if (gameState !== STATE_PLAY) return;
 
@@ -231,13 +241,8 @@ function update() {
     if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
       score++;
       coins++;
+      saveCoins();
       pipe.passed = true;
-
-      fetch(`${SERVER_URL}/add-coins`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: USER_ID, amount: 1 })
-      });
     }
   });
 
@@ -267,40 +272,28 @@ function draw() {
   ctx.fillStyle = "#000";
   ctx.font = "18px Arial";
   ctx.fillText("МАГАЗИН", 20, 30);
-  ctx.fillText("||", canvas.width - 35, 30);
+  ctx.fillText("||", canvas.width - 40, 30);
 
-  ctx.fillText(`Score: ${score}`, 20, 60);
-  ctx.drawImage(coinImg, 20, 70, 16, 16);
-  ctx.fillText(coins, 42, 83);
+  ctx.fillText(`Счёт: ${score}`, 20, 60);
+  ctx.drawImage(coinImg, 20, 75, 16, 16);
+  ctx.fillText(coins, 42, 88);
 
   if (gameState === STATE_START) {
     darkOverlay();
     ctx.fillStyle = "#fff";
     ctx.font = "30px Arial";
-    ctx.fillText("FLAPPYKRESH", 70, 280);
-    ctx.font = "18px Arial";
-    ctx.fillText("Tap to play", 120, 320);
+    ctx.fillText("FLAPPYKRESH", canvas.width / 2 - 110, canvas.height / 2);
   }
 
-  if (gameState === STATE_PAUSE) {
+  if (gameState === STATE_PAUSE || gameState === STATE_GAMEOVER) {
     darkOverlay();
-    ctx.fillStyle = "#fff";
-    ctx.font = "32px Arial";
-    ctx.fillText("PAUSE", 120, 300);
-  }
-
-  if (gameState === STATE_GAMEOVER) {
-    darkOverlay();
-    ctx.fillStyle = "#fff";
-    ctx.font = "30px Arial";
-    ctx.fillText("GAME OVER", 80, 280);
   }
 
   if (gameState === STATE_SHOP) {
     darkOverlay();
     ctx.fillStyle = "#fff";
     ctx.font = "26px Arial";
-    ctx.fillText("МАГАЗИН", 120, 60);
+    ctx.fillText("МАГАЗИН", canvas.width / 2 - 70, 60);
     ctx.font = "16px Arial";
     ctx.fillText("НАЗАД", 20, 30);
 
@@ -313,8 +306,8 @@ function draw() {
 
       ctx.fillStyle = "#000";
       ctx.fillText(item.title, x + 10, y + 30);
-      ctx.drawImage(coinImg, x + 10, y + 45, 16, 16);
-      ctx.fillText(item.price, x + 30, y + 58);
+      ctx.drawImage(coinImg, x + 10, y + 50, 16, 16);
+      ctx.fillText(item.price, x + 30, y + 63);
     });
   }
 }
@@ -327,5 +320,4 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-
 loop();
