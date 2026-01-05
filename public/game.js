@@ -81,6 +81,9 @@ let pipeTimer = 0;
 // =====================
 let score = 0;
 let coins = 0;
+let buyMessage= "";
+let buyMessageTimer = 0;
+let bestScore = 0;
 
 // =====================
 // LOAD USER DATA
@@ -95,6 +98,7 @@ fetch(`${SERVER_URL}/user/${USER_ID}`)
   .then(r => r.json())
   .then(data => {
     coins = data.coins || 0;
+    bestScore = data.bestScore || 0;
   });
 
 // =====================
@@ -164,6 +168,9 @@ function handleInput(e) {
     price: item.price
   })
 });
+
+buyMessage = `Ты купил:\n${item.title}`;
+buyMessageTimer = 120
         }
       }
     });
@@ -219,6 +226,14 @@ function update() {
 
   if (bird.y < 0 || bird.y + bird.size > canvas.height) {
     gameState = STATE_GAMEOVER;
+    fetch (`${SERVER_URL}/score`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id:USER_ID,
+        score: score
+      })
+    });
   }
 
   pipeTimer++;
@@ -291,6 +306,7 @@ function draw() {
   ctx.fillText("||", canvas.width - 40, 30);
 
   ctx.fillText(`Счёт: ${score}`, 20, 60);
+  ctx.fillText(`Лучший: ${bestScorescore}`, 20, 80);
   ctx.drawImage(coinImg, 20, 70, 18, 18);
   ctx.fillText(coins, 45, 85);
 
@@ -316,6 +332,9 @@ function draw() {
     ctx.font = "30px Arial";
     ctx.fillText("ТЫ ПРОИГРАЛ", canvas.width / 2 - 100, canvas.height / 2);
   }
+  if (score > bestScore) {
+    bestScore = score;
+  }
 
   if (gameState === STATE_SHOP) {
     darkOverlay();
@@ -336,6 +355,15 @@ function draw() {
       drawMultiline(item.title, x + 10, y + 25);
       ctx.drawImage(coinImg, x + 10, y + 60, 16, 16);
       ctx.fillText(item.price, x + 30, y + 73);
+
+    if (buyMessageTimer > 0 ) {
+      darkOverlay();
+      ctx.fillStyle = "#fff"
+      ctx.font = "24px Arial"
+      drawMultiline(buyMessage, canvas.width / 2 - 100, canvas.height / 2);
+      buyMessageTimer--;
+    }
+    
     });
   }
 }
