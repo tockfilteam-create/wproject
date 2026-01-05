@@ -81,7 +81,6 @@ let pipeTimer = 0;
 // DATA
 // =====================
 let score = 0;
-let coins = 0;
 
 // =====================
 // LOAD USER DATA
@@ -107,7 +106,7 @@ const shopItems = [
   { title: "Управляй\nмной", price: 1000 },
   { title: "Челлендж", price: 2500 },
   { title: "Участие\nв видео", price: 5000 },
-  { title: "Ваша идея\nвидео", price: 1000 }
+  { title: "Ваша идея\nвидео", price: 10000 }
 ];
 
 // =====================
