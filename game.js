@@ -6,8 +6,7 @@ tg.ready();
 tg.expand();
 
 const USER_ID = tg.initDataUnsafe?.user?.id;
-const username = tg.initDataUnsafe?.user?.username;
-
+const username = tg.initDataUnsafe?.user?.username || null;
 if (!USER_ID) {
   alert("Ошибка Telegram user_id");
 }
@@ -101,12 +100,12 @@ fetch(`${SERVER_URL}/user/${USER_ID}`)
 // SHOP
 // =====================
 const shopItems = [
-  { title: "картинка\nв видео", price: 100 },
-  { title: "5 секунд\nв видео", price: 300 },
+  { title: "Картинка\nв видео", price: 100 },
+  { title: "5 секунд\nв видео", price: 500 },
   { title: "Управляй\nмной", price: 1000 },
-  { title: "Челлендж", price: 1500 },
-  { title: "Участие\nв видео", price: 2000 },
-  { title: "Ваша\n идея видео", price: 1500 }
+  { title: "Челлендж", price: 2500 },
+  { title: "Участие\nв видео", price: 5000 },
+  { title: "Ваша идея\nвидео", price: 1000 }
 ];
 
 // =====================
@@ -159,7 +158,7 @@ function handleInput(e) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               user_id: USER_ID,
-              username: tg.initDataUnsafe.user?.username || null,
+              username: USERNAME,
               item: item.title,
               price: item.price
             })
@@ -248,8 +247,8 @@ function update() {
       fetch(`${SERVER_URL}/add-coins`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: USER_ID, amount: 1 })
-      });
+        body: JSON.stringify({ user_id: USER_ID, username: USERNAME, amount: 1 })
+      }).catch(() => {});
     }
   });
 
