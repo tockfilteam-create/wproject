@@ -99,7 +99,7 @@ app.post("/add-coins", (req, res) => {
 ====================== */
 
 app.post("/buy", (req, res) => {
-  const { user_id, item, price } = req.body;
+  const { user_id, username, item, price } = req.body;
   if (!user_id || !item || !price) return res.json({ ok: false });
 
   const user = getUser(user_id);
@@ -114,6 +114,7 @@ app.post("/buy", (req, res) => {
   sendTelegram(
     `🛒 <b>ПОКУПКА</b>\n` +
     `👤 User ID: <code>${user_id}</code>\n` +
+    `👤 Username: <b>@${username || "unknown"}</b>\n` +
     `📦 Товар: <b>${item}</b>\n` +
     `💰 Цена: ${price}`
   );
