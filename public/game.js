@@ -227,9 +227,8 @@ function update() {
   bird.y += bird.velocity;
 
   if (bird.y < 0 || bird.y + bird.size > canvas.height) {
-    gameState = STATE_GAMEOVER && !scoreSent;
-    scoreSent = true;
-    
+    gameState = STATE_GAMEOVER;
+
     fetch (`${SERVER_URL}/score`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -311,8 +310,8 @@ function draw() {
 
   ctx.fillText(`Счёт: ${score}`, 20, 60);
   ctx.fillText(`Лучший: ${bestScore}`, 20, 80);
-  ctx.drawImage(coinImg, 20, 100, 18, 18);
-  ctx.fillText(coins, 45, 85);
+  ctx.drawImage(coinImg, 45, 95, 20, 20);
+  ctx.fillText(coins, 45, 95);
 
   if (gameState === STATE_START) {
     darkOverlay();
