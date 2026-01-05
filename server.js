@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 
@@ -9,15 +8,11 @@ app.use(cors());
 app.use(express.json());
 
 /* ======================
-   CONFIG
+   TELEGRAM BOT
 ====================== */
 
-const BOT_TOKEN = "8405263942:AAGBBYHvXtLEddP4GrfNKdNrjqrFWAQt53Y";
-const ADMIN_CHAT_ID = "921427881";
-
-/* ======================
-   TELEGRAM SEND
-====================== */
+const BOT_TOKEN = "ТВОЙ_BOT_TOKEN";
+const ADMIN_CHAT_ID = "ТВОЙ_CHAT_ID";
 
 function sendTelegram(text) {
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -26,8 +21,7 @@ function sendTelegram(text) {
     body: JSON.stringify({
       chat_id: ADMIN_CHAT_ID,
       text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true
+      parse_mode: "HTML"
     })
   }).catch(err => console.error("TG ERROR:", err));
 }
@@ -36,48 +30,53 @@ function sendTelegram(text) {
    USERS STORAGE
 ====================== */
 
+const USERS_FILE = path.join(__dirname, "users.json");
 let users = {};
 
-if (fs.existsSync("users.json")) {
+if (fs.existsSync(USERS_FILE)) {
   try {
-    users = JSON.parse(fs.readFileSync("users.json", "utf-8"));
+    users = JSON.parse(fs.readFileSync(USERS_FILE, "utf-8"));
   } catch {
     users = {};
   }
 }
 
 function saveUsers() {
-  fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
+  fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+}
+
+function getUser(id) {
+  if (!users[id]) {
+    users[id] = {
+      coins: 0,
+      bestScore: 0
+    };
+    saveUsers();
+  }
+  return users[id];
 }
 
 /* ======================
-   STATIC GAME
+   STATIC FILES (GAME)
 ====================== */
 
 app.use(express.static(path.join(__dirname, "public")));
+
+/* ======================
+   MAIN PAGE
+====================== */
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 /* ======================
-   INIT USER
+   GET USER DATA
 ====================== */
 
-app.post("/init", (req, res) => {
-  const { user_id, username } = req.body;
-
-  if (!user_id) return res.json({ ok: false });
-
-  if (!users[user_id]) {
-    users[user_id] = {
-      coins: 0,
-      username: username || null
-    };
-    saveUsers();
-  }
-
-  res.json({ ok: true, coins: users[user_id].coins });
+app.get("/user/:id", (req, res) => {
+  const user = getUser(req.params.id);
+  res.json(user);
 });
 
 /* ======================
@@ -85,13 +84,14 @@ app.post("/init", (req, res) => {
 ====================== */
 
 app.post("/add-coins", (req, res) => {
-  const { user_id, amount } = req.body;
-  if (!users[user_id]) return res.json({ ok: false });
+  const { user_id,username, amount } = req.body;
+  if (!user_id, username) return res.json({ ok: false });
 
-  users[user_id].coins += amount;
+  const user = getUser(user_id);
+  user.coins += Number(amount) || 0;
   saveUsers();
 
-  res.json({ ok: true, coins: users[user_id].coins });
+  res.json({ ok: true, coins: user.coins });
 });
 
 /* ======================
@@ -99,33 +99,60 @@ app.post("/add-coins", (req, res) => {
 ====================== */
 
 app.post("/buy", (req, res) => {
-  const { user_id, username, item, price } = req.body;
-  if (!users[user_id]) return res.json({ ok: false });
+  const { user_id,username, item, price } = req.body;
+  if (!user_id || !item || !price) return res.json({ ok: false });
 
-  users[user_id].coins -= price;
-  users[user_id].username = username || users[user_id].username;
+  const user = getUser(user_id);
+  const userline = username
+    ? `👤Пользователь: @${username}`
+    : `👤user id: <code>${user_id}</code>`;
+
+  if (user.coins < price) {
+    return res.json({ ok: false, error: "NOT_ENOUGH_COINS" });
+  }
+
+  user.coins -= price;
   saveUsers();
-
-  const link = username
-    ? `https://t.me/${username}`
-    : "❌ нет username";
 
   sendTelegram(
     `🛒 <b>ПОКУПКА</b>\n` +
-    `👤 ${link}\n` +
-    `🆔 <code>${user_id}</code>\n` +
-    `📦 ${item}\n` +
-    `💰 ${price}`
+    `${userline}\n` +
+    `📦 Товар: <b>${item}</b>\n` +
+    `💰 Цена: ${price}`
   );
+
+  res.json({ ok: true, coins: user.coins });
+});
+
+/* ======================
+   SAVE SCORE
+====================== */
+
+app.post("/score", (req, res) => {
+  const { user_id, score } = req.body;
+  if (!user_id || score == null) return res.json({ ok: false });
+
+  const user = getUser(user_id);
+
+  if (score > user.bestScore) {
+    user.bestScore = score;
+    saveUsers();
+
+    sendTelegram(
+      `🎮 <b>НОВЫЙ РЕКОРД</b>\n` +
+      `👤 <code>${user_id}</code>\n` +
+      `🔥 Score: ${score}`
+    );
+  }
 
   res.json({ ok: true });
 });
 
 /* ======================
-   START
+   START SERVER
 ====================== */
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("SERVER WORKS");
+  console.log("SERVER WORKS ON PORT", PORT);
 });
