@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const fetch = require("node-fetch");
 const fs = require("fs");
 const path = require("path");
 
@@ -12,8 +11,8 @@ app.use(express.json());
    TELEGRAM BOT
 ====================== */
 
-const BOT_TOKEN = "ТУТ_ТВОЙ_BOT_TOKEN";
-const ADMIN_CHAT_ID = "ТУТ_ТВОЙ_CHAT_ID";
+const BOT_TOKEN = "8405263942:AAGBBYHvXtLEddP4GrfNKdNrjqrFWAQt53Y";
+const ADMIN_CHAT_ID = "921427881";
 
 function sendTelegram(text) {
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -46,8 +45,7 @@ function saveUsers() {
 }
 
 /* ======================
-   STATIC FILES (GAME)
-   ЭТО САМОЕ ВАЖНОЕ ❗️❗️❗️
+   STATIC FILES
 ====================== */
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -67,7 +65,7 @@ app.get("/", (req, res) => {
 app.post("/score", (req, res) => {
   const { userId, score } = req.body;
 
-  if (!userId) {
+  if (!userId || score == null) {
     return res.status(400).json({ ok: false });
   }
 
@@ -88,6 +86,6 @@ app.post("/score", (req, res) => {
 ====================== */
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT,  () => {
   console.log("SERVER WORKS ON PORT", PORT);
 });
