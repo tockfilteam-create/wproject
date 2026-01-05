@@ -1,81 +1,54 @@
-// =====================
-// TELEGRAM
-// =====================
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
-
-const userId = tg.initDataUnsafe?.user?.id || null;
-const API_URL = "https://ТВОЙ_RENDER_URL.onrender.com";
-
-// =====================
-// CANVAS
-// =====================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-function resizeCanvas() {
+function resize() {
   canvas.width = window.innerWidth;
   canvas.height = window.innerHeight;
 }
-resizeCanvas();
-window.addEventListener("resize", resizeCanvas);
+resize();
+window.addEventListener("resize", resize);
 
-// =====================
-// IMAGES
-// =====================
-const playerImg = new Image();
-playerImg.src = "player.png";
+// ===== TELEGRAM =====
+let tgUserId = null;
+if (window.Telegram && Telegram.WebApp) {
+  Telegram.WebApp.expand();
+  tgUserId = Telegram.WebApp.initDataUnsafe?.user?.id || null;
+}
 
+// ===== IMAGES =====
 const bgImg = new Image();
 bgImg.src = "background.png";
+
+const playerImg = new Image();
+playerImg.src = "player.png";
 
 const coinImg = new Image();
 coinImg.src = "coin.png";
 
-// =====================
-// STATES
-// =====================
-const STATE_START = "start";
+// ===== GAME STATE =====
 const STATE_PLAY = "play";
 const STATE_PAUSE = "pause";
 const STATE_GAMEOVER = "gameover";
 const STATE_SHOP = "shop";
+let gameState = STATE_PLAY;
 
-let gameState = STATE_START;
-let prevState = STATE_START;
-
-// =====================
-// PLAYER
-// =====================
-let bird = {
+// ===== PLAYER =====
+let player = {
   x: 80,
-  y: 200,
-  size: 32,
-  velocity: 0
+  y: canvas.height / 2,
+  w: 40,
+  h: 40,
+  vy: 0
 };
 
-const gravity = 0.5;
-const jumpPower = -8;
+const gravity = 0.6;
+const jumpPower = -10;
 
-// =====================
-// PIPES
-// =====================
-let pipes = [];
-const pipeWidth = 60;
-const pipeGap = 160;
-const pipeSpeed = 2;
-let pipeTimer = 0;
-
-// =====================
-// DATA
-// =====================
+// ===== SCORE / COINS =====
 let score = 0;
-let coins = 0;
+let coins = Number(localStorage.getItem("coins")) || 0;
 
-// =====================
-// SHOP
-// =====================
+// ===== SHOP =====
 const shopItems = [
   { title: "Картинка в видео", price: 100 },
   { title: "5 секунд в видео", price: 300 },
@@ -85,238 +58,197 @@ const shopItems = [
   { title: "Ваша идея видео", price: 5000 }
 ];
 
-// =====================
-// SERVER
-// =====================
-async function loadCoins() {
-  if (!userId) return;
-  const res = await fetch(`${API_URL}/coins/${userId}`);
-  const data = await res.json();
-  coins = data.coins || 0;
-}
+// ===== INPUT (ANTI DOUBLE TAP) =====
+let canTap = true;
+function tap() {
+  if (!canTap) return;
+  canTap = false;
+  setTimeout(() => (canTap = true), 200);
 
-async function saveCoins() {
-  if (!userId) return;
-  fetch(`${API_URL}/coins`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, coins })
-  });
-}
-
-loadCoins();
-
-// =====================
-// INPUT (ТОЛЬКО TOUCH)
-// =====================
-canvas.addEventListener("touchstart", handleInput, { passive: false });
-
-function handleInput(e) {
-  e.preventDefault();
-
-  const rect = canvas.getBoundingClientRect();
-  const x = e.touches[0].clientX - rect.left;
-  const y = e.touches[0].clientY - rect.top;
-
-  // SHOP BUTTON
-  if (x < 100 && y < 50 && gameState !== STATE_SHOP) {
-    prevState = gameState;
-    gameState = STATE_SHOP;
-    return;
+  if (gameState === STATE_PLAY) {
+    player.vy = jumpPower;
   }
+}
+
+canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
+  tap();
+});
+canvas.addEventListener("mousedown", tap);
+
+// ===== BUTTON AREAS =====
+function isIn(x, y, w, h, mx, my) {
+  return mx >= x && mx <= x + w && my >= y && my <= y + h;
+}
+
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
 
   // PAUSE
-  if (gameState === STATE_PLAY && x > canvas.width - 60 && y < 50) {
-    gameState = STATE_PAUSE;
-    return;
+  if (isIn(canvas.width - 50, 10, 40, 40, mx, my)) {
+    if (gameState === STATE_PLAY) gameState = STATE_PAUSE;
+    else if (gameState === STATE_PAUSE) gameState = STATE_PLAY;
   }
 
-  if (gameState === STATE_PAUSE) {
+  // SHOP OPEN
+  if (isIn(10, 110, 120, 40, mx, my) && gameState !== STATE_SHOP) {
+    gameState = STATE_SHOP;
+  }
+
+  // BACK
+  if (gameState === STATE_SHOP && isIn(10, 10, 100, 40, mx, my)) {
     gameState = STATE_PLAY;
-    return;
   }
 
-  // SHOP SCREEN
+  // SHOP BUY
   if (gameState === STATE_SHOP) {
-    if (x < 100 && y < 50) {
-      gameState = prevState;
-      return;
-    }
-
     shopItems.forEach((item, i) => {
-      const sx = 30 + (i % 2) * 170;
-      const sy = 140 + Math.floor(i / 2) * 120;
+      const x = 20 + (i % 2) * (canvas.width / 2 - 40);
+      const y = 140 + Math.floor(i / 2) * 130;
+      const w = canvas.width / 2 - 60;
+      const h = 100;
 
-      if (x > sx && x < sx + 140 && y > sy && y < sy + 90) {
+      if (isIn(x, y, w, h, mx, my)) {
         if (coins >= item.price) {
           coins -= item.price;
-          saveCoins();
-
-          tg.sendData(JSON.stringify({
-            type: "purchase",
-            item: item.title,
-            price: item.price
-          }));
+          localStorage.setItem("coins", coins);
+          alert("Покупка успешна");
+        } else {
+          alert("Не хватает монет");
         }
       }
     });
-    return;
   }
 
-  if (gameState === STATE_START) {
-    gameState = STATE_PLAY;
-    return;
-  }
-
+  // RESTART
   if (gameState === STATE_GAMEOVER) {
-    restartGame();
-    return;
+    resetGame();
   }
+});
 
-  if (gameState === STATE_PLAY) {
-    bird.velocity = jumpPower;
+// ===== TEXT WRAP =====
+function drawMultiline(text, x, y, maxW, lh) {
+  const words = text.split(" ");
+  let line = "";
+  let yy = y;
+  for (let w of words) {
+    let test = line + w + " ";
+    if (ctx.measureText(test).width > maxW) {
+      ctx.fillText(line, x, yy);
+      line = w + " ";
+      yy += lh;
+    } else {
+      line = test;
+    }
   }
+  ctx.fillText(line, x, yy);
 }
 
-// =====================
-// GAME
-// =====================
-function restartGame() {
-  bird.y = 200;
-  bird.velocity = 0;
-  pipes = [];
+// ===== RESET =====
+function resetGame() {
+  player.y = canvas.height / 2;
+  player.vy = 0;
   score = 0;
   gameState = STATE_PLAY;
 }
 
-// =====================
-// PIPES
-// =====================
-function createPipe() {
-  const topHeight = Math.random() * 200 + 50;
-  pipes.push({
-
-x: canvas.width,
-    top: topHeight,
-    bottom: canvas.height - topHeight - pipeGap,
-    passed: false
-  });
-}
-
-// =====================
-// UPDATE
-// =====================
-function update() {
-  if (gameState !== STATE_PLAY) return;
-
-  bird.velocity += gravity;
-  bird.y += bird.velocity;
-
-  if (bird.y < 0 || bird.y + bird.size > canvas.height) {
-    gameState = STATE_GAMEOVER;
-  }
-
-  pipeTimer++;
-  if (pipeTimer > 100) {
-    createPipe();
-    pipeTimer = 0;
-  }
-
-  pipes.forEach(pipe => {
-    pipe.x -= pipeSpeed;
-
-    if (
-      bird.x < pipe.x + pipeWidth &&
-      bird.x + bird.size > pipe.x &&
-      (bird.y < pipe.top ||
-        bird.y + bird.size > canvas.height - pipe.bottom)
-    ) {
-      gameState = STATE_GAMEOVER;
-    }
-
-    if (!pipe.passed && pipe.x + pipeWidth < bird.x) {
-      score++;
-      coins++;
-      saveCoins();
-      pipe.passed = true;
-    }
-  });
-
-  pipes = pipes.filter(p => p.x + pipeWidth > 0);
-}
-
-// =====================
-// DRAW
-// =====================
-function darkOverlay() {
-  ctx.fillStyle = "rgba(0,0,0,0.6)";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
-
+// ===== DRAW =====
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = "#FFD700";
-  pipes.forEach(p => {
-    ctx.fillRect(p.x, 0, pipeWidth, p.top);
-    ctx.fillRect(p.x, canvas.height - p.bottom, pipeWidth, p.bottom);
-  });
+  // PLAYER
+  ctx.drawImage(playerImg, player.x, player.y, player.w, player.h);
 
-  ctx.drawImage(playerImg, bird.x, bird.y, bird.size, bird.size);
-
+  // HUD
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillRect(10, 10, 140, 40);
   ctx.fillStyle = "#000";
   ctx.font = "18px Arial";
-  ctx.fillText("МАГАЗИН", 20, 30);
-  ctx.fillText("||", canvas.width - 40, 30);
-  ctx.fillText(`Счёт: ${score}`, 20, 60);
-  ctx.drawImage(coinImg, 20, 75, 16, 16);
-  ctx.fillText(coins, 42, 88);
+  ctx.fillText("Счёт: " + score, 20, 35);
 
-  if (gameState === STATE_START) {
-    darkOverlay();
-    ctx.fillStyle = "#fff";
-    ctx.font = "32px Arial";
-    ctx.fillText("FLAPPYKRESH", canvas.width / 2 - 120, canvas.height / 2);
-  }
+  ctx.fillRect(10, 60, 100, 35);
+  ctx.drawImage(coinImg, 15, 67, 20, 20);
+  ctx.fillText(coins, 40, 85);
 
+  // PAUSE BUTTON
+  ctx.fillRect(canvas.width - 50, 10, 40, 40);
+  ctx.fillStyle = "#000";
+  ctx.
+
+fillText("II", canvas.width - 38, 38);
+
+  // SHOP BTN
+  ctx.fillStyle = "rgba(255,255,255,0.9)";
+  ctx.fillRect(10, 110, 120, 40);
+  ctx.fillStyle = "#000";
+  ctx.fillText("МАГАЗИН", 18, 138);
+
+  // STATES
   if (gameState === STATE_PAUSE) {
-    darkOverlay();
-    ctx.fillStyle = "#fff";
-    ctx.font = "32px Arial";
-    ctx.fillText("ПАУЗА", canvas.width / 2 - 60, canvas.height / 2);
+    overlay("Пауза");
   }
 
   if (gameState === STATE_GAMEOVER) {
-    darkOverlay();
-    ctx.fillStyle = "#fff";
-    ctx.font = "32px Arial";
-    ctx.fillText("ТЫ ПРОИГРАЛ", canvas.width / 2 - 110, canvas.height / 2);
+    overlay("Ты проиграл");
   }
 
   if (gameState === STATE_SHOP) {
-    darkOverlay();
+    overlay("");
+
     ctx.fillStyle = "#fff";
-    ctx.font = "26px Arial";
-    ctx.fillText("МАГАЗИН", canvas.width / 2 - 70, 60);
-    ctx.fillText("НАЗАД", 20, 30);
+    ctx.font = "28px Arial";
+    ctx.fillText("МАГАЗИН", canvas.width / 2 - 80, 80);
+
+    ctx.font = "18px Arial";
+    ctx.fillText("НАЗАД", 20, 35);
 
     shopItems.forEach((item, i) => {
-      const x = 30 + (i % 2) * 170;
-      const y = 140 + Math.floor(i / 2) * 120;
+      const x = 20 + (i % 2) * (canvas.width / 2 - 40);
+      const y = 140 + Math.floor(i / 2) * 130;
+      const w = canvas.width / 2 - 60;
+      const h = 100;
+
       ctx.fillStyle = "#fff";
-      ctx.fillRect(x, y, 140, 90);
+      ctx.fillRect(x, y, w, h);
+
       ctx.fillStyle = "#000";
-      ctx.fillText(item.title, x + 10, y + 30);
-      ctx.drawImage(coinImg, x + 10, y + 50, 16, 16);
-      ctx.fillText(item.price, x + 30, y + 63);
+      ctx.font = "16px Arial";
+      drawMultiline(item.title, x + 10, y + 25, w - 20, 18);
+
+      ctx.drawImage(coinImg, x + 10, y + h - 30, 18, 18);
+      ctx.fillText(item.price, x + 35, y + h - 15);
     });
   }
 }
 
-// =====================
-// LOOP
-// =====================
+// ===== OVERLAY =====
+function overlay(text) {
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fff";
+  ctx.font = "36px Arial";
+  ctx.fillText(text, canvas.width / 2 - ctx.measureText(text).width / 2, canvas.height / 2);
+}
+
+// ===== UPDATE =====
+function update() {
+  if (gameState === STATE_PLAY) {
+    player.vy += gravity;
+    player.y += player.vy;
+
+    if (player.y + player.h > canvas.height) {
+      gameState = STATE_GAMEOVER;
+      coins += Math.floor(score / 2);
+      localStorage.setItem("coins", coins);
+    }
+
+    score++;
+  }
+}
+
+// ===== LOOP =====
 function loop() {
   update();
   draw();
