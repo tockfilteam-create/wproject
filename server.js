@@ -11,8 +11,8 @@ app.use(express.json());
    TELEGRAM BOT
 ====================== */
 
-const BOT_TOKEN = "ТВОЙ_BOT_TOKEN";
-const ADMIN_CHAT_ID = "ТВОЙ_CHAT_ID";
+const BOT_TOKEN = "8405263942:AAGBBYHvXtLEddP4GrfNKdNrjqrFWAQt53Y";
+const ADMIN_CHAT_ID = "921427881";
 
 function sendTelegram(text) {
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
