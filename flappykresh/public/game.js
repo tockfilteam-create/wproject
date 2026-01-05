@@ -6,7 +6,7 @@ tg.ready();
 tg.expand();
 
 const userId = tg.initDataUnsafe?.user?.id || null;
-const API_URL = "https://wproject.onrender.com"; // ← ЗАМЕНИ
+const API_URL = "https://ТВОЙ_RENDER_URL.onrender.com";
 
 // =====================
 // CANVAS
@@ -107,7 +107,7 @@ async function saveCoins() {
 loadCoins();
 
 // =====================
-// INPUT (NO DOUBLE TAP)
+// INPUT (ТОЛЬКО TOUCH)
 // =====================
 canvas.addEventListener("touchstart", handleInput, { passive: false });
 
@@ -115,9 +115,8 @@ function handleInput(e) {
   e.preventDefault();
 
   const rect = canvas.getBoundingClientRect();
-  const touch = e.touches[0];
-  const x = touch.clientX - rect.left;
-  const y = touch.clientY - rect.top;
+  const x = e.touches[0].clientX - rect.left;
+  const y = e.touches[0].clientY - rect.top;
 
   // SHOP BUTTON
   if (x < 100 && y < 50 && gameState !== STATE_SHOP) {
@@ -127,11 +126,7 @@ function handleInput(e) {
   }
 
   // PAUSE
-  if (
-    gameState === STATE_PLAY &&
-    x > canvas.width - 60 &&
-    y < 50
-  ) {
+  if (gameState === STATE_PLAY && x > canvas.width - 60 && y < 50) {
     gameState = STATE_PAUSE;
     return;
   }
@@ -141,7 +136,7 @@ function handleInput(e) {
     return;
   }
 
-  // SHOP
+  // SHOP SCREEN
   if (gameState === STATE_SHOP) {
     if (x < 100 && y < 50) {
       gameState = prevState;
@@ -149,24 +144,19 @@ function handleInput(e) {
     }
 
     shopItems.forEach((item, i) => {
-      const cx = 30 + (i % 2) * 170;
-      const cy = 140 + Math.floor(i / 2) * 120;
+      const sx = 30 + (i % 2) * 170;
+      const sy = 140 + Math.floor(i / 2) * 120;
 
-      if (x > cx && x < cx + 140 && y > cy && y < cy + 90) {
+      if (x > sx && x < sx + 140 && y > sy && y < sy + 90) {
         if (coins >= item.price) {
           coins -= item.price;
           saveCoins();
 
           tg.sendData(JSON.stringify({
             type: "purchase",
-            userId,
             item: item.title,
             price: item.price
           }));
-
-          alert("Покупка отправлена");
-        } else {
-          alert("Не хватает монет");
         }
       }
     });
@@ -189,27 +179,33 @@ function handleInput(e) {
 }
 
 // =====================
-// GAME LOGIC
+// GAME
 // =====================
 function restartGame() {
-  bird.y = canvas.height / 2;
+  bird.y = 200;
   bird.velocity = 0;
   pipes = [];
   score = 0;
-
-gameState = STATE_PLAY;
+  gameState = STATE_PLAY;
 }
 
+// =====================
+// PIPES
+// =====================
 function createPipe() {
   const topHeight = Math.random() * 200 + 50;
   pipes.push({
-    x: canvas.width,
+
+x: canvas.width,
     top: topHeight,
     bottom: canvas.height - topHeight - pipeGap,
     passed: false
   });
 }
 
+// =====================
+// UPDATE
+// =====================
 function update() {
   if (gameState !== STATE_PLAY) return;
 
@@ -261,10 +257,10 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
 
-  pipes.forEach(pipe => {
-    ctx.fillStyle = "#FFD700";
-    ctx.fillRect(pipe.x, 0, pipeWidth, pipe.top);
-    ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipeWidth, pipe.bottom);
+  ctx.fillStyle = "#FFD700";
+  pipes.forEach(p => {
+    ctx.fillRect(p.x, 0, pipeWidth, p.top);
+    ctx.fillRect(p.x, canvas.height - p.bottom, pipeWidth, p.bottom);
   });
 
   ctx.drawImage(playerImg, bird.x, bird.y, bird.size, bird.size);
@@ -273,7 +269,6 @@ function draw() {
   ctx.font = "18px Arial";
   ctx.fillText("МАГАЗИН", 20, 30);
   ctx.fillText("||", canvas.width - 40, 30);
-
   ctx.fillText(`Счёт: ${score}`, 20, 60);
   ctx.drawImage(coinImg, 20, 75, 16, 16);
   ctx.fillText(coins, 42, 88);
@@ -281,12 +276,22 @@ function draw() {
   if (gameState === STATE_START) {
     darkOverlay();
     ctx.fillStyle = "#fff";
-    ctx.font = "30px Arial";
-    ctx.fillText("FLAPPYKRESH", canvas.width / 2 - 110, canvas.height / 2);
+    ctx.font = "32px Arial";
+    ctx.fillText("FLAPPYKRESH", canvas.width / 2 - 120, canvas.height / 2);
   }
 
-  if (gameState === STATE_PAUSE || gameState === STATE_GAMEOVER) {
+  if (gameState === STATE_PAUSE) {
     darkOverlay();
+    ctx.fillStyle = "#fff";
+    ctx.font = "32px Arial";
+    ctx.fillText("ПАУЗА", canvas.width / 2 - 60, canvas.height / 2);
+  }
+
+  if (gameState === STATE_GAMEOVER) {
+    darkOverlay();
+    ctx.fillStyle = "#fff";
+    ctx.font = "32px Arial";
+    ctx.fillText("ТЫ ПРОИГРАЛ", canvas.width / 2 - 110, canvas.height / 2);
   }
 
   if (gameState === STATE_SHOP) {
@@ -294,16 +299,13 @@ function draw() {
     ctx.fillStyle = "#fff";
     ctx.font = "26px Arial";
     ctx.fillText("МАГАЗИН", canvas.width / 2 - 70, 60);
-    ctx.font = "16px Arial";
     ctx.fillText("НАЗАД", 20, 30);
 
     shopItems.forEach((item, i) => {
       const x = 30 + (i % 2) * 170;
       const y = 140 + Math.floor(i / 2) * 120;
-
       ctx.fillStyle = "#fff";
       ctx.fillRect(x, y, 140, 90);
-
       ctx.fillStyle = "#000";
       ctx.fillText(item.title, x + 10, y + 30);
       ctx.drawImage(coinImg, x + 10, y + 50, 16, 16);
