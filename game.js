@@ -7,6 +7,8 @@ tg.expand();
 
 const USER_ID = tg.initDataUnsafe?.user?.id;
 const username = tg.initDataUnsafe?.user?.username || null;
+const USERNAME = window.Telegram?.WebApp?.initDataUnsafe?.user?.username || "unknown";
+
 if (!USER_ID) {
   alert("Ошибка Telegram user_id");
 }
