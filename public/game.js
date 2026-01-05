@@ -6,6 +6,7 @@ tg.ready();
 tg.expand();
 
 const USER_ID = tg.initDataUnsafe?.user?.id;
+const username = tg.initDataUnsafe?.user?.username || null;
 if (!USER_ID) {
   alert("Ошибка Telegram user_id");
 }
@@ -157,6 +158,7 @@ function handleInput(e) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               user_id: USER_ID,
+              username: USERNAME,
               item: item.title,
               price: item.price
             })
@@ -245,7 +247,7 @@ function update() {
       fetch(`${SERVER_URL}/add-coins`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: USER_ID, amount: 1 })
+        body: JSON.stringify({ user_id: USER_ID, username: USERNAME, amount: 1 })
       });
     }
   });
