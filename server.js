@@ -128,3 +128,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log("SERVER STARTED ON PORT", PORT);
 });
+app.get("/", (req, res) => {
+  res.send("SERVER WORKS");
+});
