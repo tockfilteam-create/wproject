@@ -84,6 +84,7 @@ let coins = 0;
 let buyMessage= "";
 let buyMessageTimer = 0;
 let bestScore = 0;
+let scroreSent = false;
 
 // =====================
 // LOAD USER DATA
@@ -170,7 +171,7 @@ function handleInput(e) {
 });
 
 buyMessage = `Ты купил:\n${item.title}`;
-buyMessageTimer = 120;
+buyMessageTimer = 220;
         }
       }
     });
@@ -200,6 +201,7 @@ function restartGame() {
   bird.velocity = 0;
   pipes = [];
   score = 0;
+  scoreSent= false;
   gameState = STATE_PLAY;
 }
 
@@ -225,7 +227,9 @@ function update() {
   bird.y += bird.velocity;
 
   if (bird.y < 0 || bird.y + bird.size > canvas.height) {
-    gameState = STATE_GAMEOVER;
+    gameState = STATE_GAMEOVER && !scoreSent;
+    scoreSent = true;
+    
     fetch (`${SERVER_URL}/score`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -307,7 +311,7 @@ function draw() {
 
   ctx.fillText(`Счёт: ${score}`, 20, 60);
   ctx.fillText(`Лучший: ${bestScore}`, 20, 80);
-  ctx.drawImage(coinImg, 20, 70, 18, 18);
+  ctx.drawImage(coinImg, 20, 100, 18, 18);
   ctx.fillText(coins, 45, 85);
 
   if (gameState === STATE_START) {
